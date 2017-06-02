@@ -209,17 +209,6 @@ public struct Range ( T )
     }
 
 
-    /***************************************************************************
-
-        The range must always be valid.
-
-    ***************************************************************************/
-
-    invariant()
-    {
-        assert(This.isValid(this.min_, this.max_));
-    }
-
     version ( UnitTest )
     {
         public istring toString()
@@ -244,9 +233,7 @@ public struct Range ( T )
 
     /***************************************************************************
 
-        Static opCall. Disables the default "constructor", with the advantage
-        that the invariant is run after calling this method, making it
-        impossible to construct invalid instances.
+        Static opCall.
 
         Params:
             min = minimum value of range
@@ -263,7 +250,7 @@ public struct Range ( T )
     public static This opCall ( T min, T max )
     out(result)
     {
-        assert(&result);
+        assert(result.is_valid());
     }
     body
     {
@@ -299,7 +286,7 @@ public struct Range ( T )
     public static This makeRange ( istring boundaries = "[]" ) ( T min, T max )
     out(result)
     {
-        assert(&result);
+        assert(result.is_valid());
     }
     body
     {
@@ -481,11 +468,6 @@ public struct Range ( T )
 
 
     /***************************************************************************
-
-        Note that in non-release builds, the struct invariant ensures that
-        instances are always valid. This method can be called by user code to
-        explicitly check the validity of a range, for example when creating a
-        range from run-time data.
 
         Returns:
             true if the range is valid (min < max, or empty)
