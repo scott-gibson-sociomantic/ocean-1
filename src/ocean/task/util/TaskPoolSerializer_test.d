@@ -87,3 +87,68 @@ unittest
     test!("==")(items, 5, "Incorrect number of items loaded");
     test!("==")(TestTask.result, 15, "Wrong result for restored tasks.");
 }
+
+/// Unit test covering passing extra arguments to the deserialization instance.
+unittest
+{
+    static struct TaskArgs
+    {
+        int i;
+    }
+
+    static class TestTask : Task
+    {
+        static int result;
+
+        public Contiguous!(TaskArgs) args;
+
+        private int extra_arg;
+
+        override public void run ( )
+        {
+            wait(1);
+            result += args.ptr.i + extra_arg;
+        }
+
+        public void copyArguments( TaskArgs data )
+        {
+            Util.copy(data, this.args);
+        }
+
+        public void serialize ( ref void[] buffer )
+        {
+            Serializer.serialize(*this.args.ptr, buffer);
+        }
+
+        public void deserialize ( void[] buffer, int extra_arg )
+        {
+            Deserializer.deserialize(buffer, this.args);
+            this.extra_arg = extra_arg;
+        }
+    }
+
+    initScheduler(SchedulerConfiguration.init);
+    TaskPoolSerializer serializer = new TaskPoolSerializer();
+
+    auto pool = new TaskPool!(TestTask);
+    pool.start(TaskArgs(1));
+    pool.start(TaskArgs(2));
+    pool.start(TaskArgs(3));
+    pool.start(TaskArgs(4));
+    pool.start(TaskArgs(5));
+
+    auto storage = new MemoryDevice;
+    serializer.dump(pool, storage);
+
+    //Run the event loop and reset the pool and result so we have a clean slate.
+    theScheduler.eventLoop();
+    TestTask.result = 0;
+    pool.clear();
+
+    storage.seek(0);
+    size_t items = serializer.load(pool, storage, 10);
+    theScheduler.eventLoop();
+
+    test!("==")(items, 5, "Incorrect number of items loaded");
+    test!("==")(TestTask.result, 65, "Wrong result for restored tasks.");
+}
